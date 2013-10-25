@@ -17,6 +17,28 @@ my $os = $^O; #get the current operating system that the script is being run und
 #print "running in: $os\n";
 #exit;
 
+#regex option characters
+    # s -> cause the . character to also match the newline character
+    # m -> multiline mode cause ^ and $ to match the beginning and end of each 
+    #      line rather than the beginning and end of the input string
+    # i -> ignore case when matching
+    # g -> match globally, i.e. continue until all matches are found one by one
+####################################### REGEX DEFINITIONS ####################
+my $state_char = '[A-Za-z]+[0-9]*'; #always 1 or more alpha characters optionally followed by numbers
+my $emit_char = '[A-Za-z]+'; #1 or more alphabet characters, no numbers allowed
+my $probability = '0?\.?[0-9]*'; #zero or more numbers, optionally preceeded by 0. or . or 0
+my $number = '-?[0-9]+'; #possibly negative integer number with no decimal places allowed
+my $structure_name = '[A-Za-z0-9-\s]*$'; #allow letters, numbers, -, and whitespace
+                                                                                 #options
+my $state_character_definition_block = "#state character definition(.*)#end scd";#ism
+my $state_character_syntax = "^($state_char)\\|(.*)\$";                          #mg
+my $emissions_syntax = "^($probability)->($emit_char)\\s*\$";                    #
+
+my $model_structure_definition_block = '#model structures(.*)#end model';        #ism
+my $model_syntax = "^>($number)\\|($structure_name)(.*?)#";                      #smg
+my $state_syntax = "^($number)\\|($state_char)\\|(.*)\$";                        #
+my $transition_syntax = "^($probability)->($number)\\s*\$";                      #
+
 #wrap all the main code in a function in order to keep the global namespace clean
 sub main{
 	my $trans = "TRANS.csv";
@@ -45,12 +67,7 @@ sub main{
 
 #Build the transition and emission matrix
 sub buildModel{
-    #regex option characters
-    # s -> cause the . character to also match the newline character
-    # m -> multiline mode cause ^ and $ to match the beginning and end of each 
-    #      line rather than the beginning and end of the input string
-    # i -> ignore case when matching
-    # g -> match globally, i.e. continue until all matches are found one by one
+    
     my $args = shift;
     my $data = $args->{'data'};
     my $bigString = join("",@$data);
@@ -59,20 +76,24 @@ sub buildModel{
     my %emitchars;  #distinct list of possible emissions from any state
                     #each of these becomes a column in the emission matrix
     #determine acceptable state characters and their emissions
-    if($bigString =~ /#state character definiton.*?#end scd/smg){
+    if($bigString =~ /$state_character_definition_block/ism){
         defineStateCharacters({emitchars  => \%emitchars,
                                statechars => \%statechars,
-                               text       => $&});
+                               text       => stripComments({text          => $1,
+                                                            comment_start => '\/\/'}) 
+                             });
     } else {
-        die "emission defintion section not found.\n";
+        die "state character definition section not found.\n";
     }
 
     my %structures; my $numstates = 0;
     #build the transition model
-    if($bigString =~ /#model structures.*?#end model/smg){                    
-        $numstates = defineModel({statechars => \%statechars,
-                                  structures => \%structures,
-                                  text       => $&});
+    if($bigString =~ /$model_structure_definition_block/ism){                    
+        $numstates = buildTransitionModel({statechars => \%statechars,
+                                           structures => \%structures,
+                                           text       => stripComments({text          => $1,
+                                                                        comment_start => '\/\/'}) 
+                                         });
     } else {
         die "model structures section not found\n";
     }
@@ -110,7 +131,6 @@ sub buildModel{
 
 #definition of the %structures datatype
 #(structnum => {name    => string,
-#               comment => string,
 #               states  => {statenum => {char  => string,
 #                                        trans => [{dest => int,
 #                                                   prob => decimal
@@ -119,9 +139,9 @@ sub buildModel{
 #                          }
 #              }
 #)
-#example of retrieving name and comment of a model structure
+#example of retrieving name model structure maybe these could be row headers in csv
+# with the right options enabled
 #my $structname    = $structures{1}->{'name'};
-#my $structcomment = $structures{1}->{'comment'};
 
 #example of retrieving the state character of a state
 #my $statechar = $structures{1}->{'states'}->{1}->{'char'};
@@ -129,25 +149,22 @@ sub buildModel{
 #example of retrieving a transition probability and destination of a state
 #my $prob = $structures{1}->{'states'}->{1}->{'trans'}->[0]->{'prob'};
 #my $dest = $structures{1}->{'states'}->{1}->{'trans'}->[0]->{'dest'};
-sub defineModel{
+sub buildTransitionModel{
     my $args = shift;
     my $statechars = $args->{'statechars'};
     my $structures = $args->{'structures'};
 
-    #allow pretty much anything but a newline in the comment
-    #can't just use .* because the s option causes . to match newlines, which is needed in the 4th capture
-    my $comment_syntax = '\/\/([a-zA-Z0-9\s=(),:;\'\"\.\[\]{}\\\/#@$%^&*!+\-_~`\.?<>]*)';
-
     #process the model structures one by one
-    while($args->{'text'} =~ /^>([0-9]+)\|([A-Za-z0-9\-\s]*)$comment_syntax([0-9]+.*?)#/smg){
+    while($args->{'text'} =~ /$model_syntax/smg){
         my %states = (); my $name = $2;
-        my %struct = ('name',$name,'comment',$3,'states',\%states);
+        my %struct = ('name',$name,'states',\%states);
         $structures->{$1} = \%struct;
 
-         #process each state for this internal structure of the model
-        my @structStates = split(/\n/,$4);
+        #process each state for this internal structure of the model
+        my @structStates = split(/\n/,$3);
         foreach my $s (@structStates){
-            if($s =~ /^([0-9]+)\|([A-Za-z])\|(.*)$/){
+            if(length($s) == 0) { next; } #caught a blank line skip to next
+            if($s =~ /$state_syntax/){
                 my $state_num = $1;
                 if(!exists($statechars->{$2})){ #make sure the state character is defined
                     die "Undefined state character used in structure \"$name\"\n";
@@ -155,13 +172,12 @@ sub defineModel{
                 if(exists($states{$state_num})){ #check if more than 1 state has the same number
                     die "More than one state has the same number in structure \"$name\"\n";
                 }
-
                 my @trans; #each entry here will become a non-zero entry in the transition csv
                 my %state = ('char',$2,'trans',\@trans);
                 $states{$state_num} = \%state;
                 my @transitions = split(/;/,$3); my $sum = 0;
                 foreach (@transitions){ #process the transitions for this state
-                    if($_ =~ /^(0?\.?[0-9]*)->(-?[0-9]+)$/i){
+                    if($_ =~ /$transition_syntax/){
                         push(@trans,{dest => $2,prob => $1});
                         $sum += $1;
                     } else{
@@ -178,7 +194,7 @@ sub defineModel{
         } #end for that processes model structure states
     } #end while that processes model structures
 
-    #massage model states to global state numbers in the correct structure order
+    #update model states to global state numbers in the specified structure order
     my @structkeys = getNumericSortKeys(%$structures);
     my $gsc = 0; #global state count
     my ($maxname, $maxstate, $max) = ("",0,-1);
@@ -218,16 +234,14 @@ sub defineStateCharacters{
     my $emitchars  = $args->{'emitchars'};
     my $statechars = $args->{'statechars'};
 
-    while($args->{'text'} =~ /^([A-Z]+)\|(.*?)$/smg){
-        my $char = $1; 
-
+    while($args->{'text'} =~ /$state_character_syntax/mg){
+        my $char = $1;
         if(exists($statechars->{$char})){ #make sure the state character isn't already defined
             die "The state character $char is defined more than once\n";
         }
-    
         my @emits = split(/;/,$2); my $sum = 0;
         foreach (@emits){ #process each emission for this state character being defined
-            if($_ =~ /^([0]*\.*[0-9]*)->([A-Za-z0-9]+)$/){
+            if($_ =~ /$emissions_syntax/){
                 $emitchars->{$2} = 0;
                 $statechars->{$char}{$2} = $1; #{statechar}{emitchar} = probability
                 $sum += $1;
@@ -235,7 +249,6 @@ sub defineStateCharacters{
                 die "syntax error in the definition of state character $char\n";
             }
         }
-        
         if($sum != 1){ #make sure all the emissions for this state character sum to 1
             die "error the emissions for state character $char sum to $sum instead of 1\n";
         }
@@ -251,6 +264,7 @@ sub defineStateCharacters{
 }
 
 #assume that 2d array (matrix) is in row major format
+#and write it to the specified file
 sub writeCSV{
 	my $args = shift;
     my $filename = $args->{'filename'};
@@ -282,6 +296,14 @@ sub readfile{
     close(IN);         #close the file
     
     return \@lines;
+}
+
+sub stripComments{
+    my $args = shift;
+    my $regex = $args->{'comment_start'}.'.*$';
+    my $text = $args->{'text'};
+    $text =~ s/$regex//mg;
+    return $text;
 }
 
 #return a new array with only 1 of each unique element found in the original array

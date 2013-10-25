@@ -1,8 +1,9 @@
-#state character definiton//accepted inputs and the accompanying emission probabilies
+#state character definition//accepted inputs and the accompanying emission probabilities
+                           //test multiline comment
 A|1->A
 T|1->T
 C|1->C
-G|1->G
+G|1->G //comment here too
 N|.25->A;.25->T;.25->C;.25->G
 #end scd
 
@@ -12,11 +13,12 @@ N|.25->A;.25->T;.25->C;.25->G
 #
 
 >2|Promoter//find some form of a TATA box
+           //another random comment test
 1|T|1->2
 2|A|.2->3;.8->4
 3|A|1->4
 4|T|1->5
-5|A|.1->6;.8->7;.1->8
+5|A|.1->6;.8->7;.1->8 //another comment
 6|A|.5->7;.5->8
 7|T|1->8
 #
@@ -70,6 +72,5 @@ N|.25->A;.25->T;.25->C;.25->G
 #
 
 >9|Post-gene//any number of nts after the gene is ok
-1|N|1->1
-#
+1|N|1->1#
 #end model
