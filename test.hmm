@@ -1,4 +1,4 @@
-#state character definiton//accepted inputs and the accompanying emission probabilies
+#state character definition//accepted inputs and the accompanying emission probabilies
 A|1->A
 T|1->T
 C|1->C
