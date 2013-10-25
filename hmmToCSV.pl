@@ -21,7 +21,13 @@ my $os = $^O; #get the current operating system that the script is being run und
 sub main{
 	my $trans = "TRANS.csv";
     my $emit  = "EMIT.csv";
-	my $file = "sample.hmm";
+	my $file = "sample.hmm"; #default script that we'll look for and process
+    my $scriptname = $0; #the name of this script
+    my $total = $#ARGV + 1;
+
+    if ($total == 1){ #assume the user gave us a .hmm file to process
+        $file = $ARGV[0];
+    }
 	
     #collect data for the transition matrix and emission matrix
 	my $model = buildModel({ data => readfile({filename => $file}) });
@@ -130,12 +136,11 @@ sub defineModel{
 
     #allow pretty much anything but a newline in the comment
     #can't just use .* because the s option causes . to match newlines, which is needed in the 4th capture
-    my $comment_syntax = '\/\/([a-zA-Z0-9\s=(),:;\'\"\.\[\]{}\\\/#@$%^&*!+\-_~`\.]*)';
+    my $comment_syntax = '\/\/([a-zA-Z0-9\s=(),:;\'\"\.\[\]{}\\\/#@$%^&*!+\-_~`\.?<>]*)';
 
     #process the model structures one by one
     while($args->{'text'} =~ /^>([0-9]+)\|([A-Za-z0-9\-\s]*)$comment_syntax([0-9]+.*?)#/smg){
         my %states = (); my $name = $2;
-        #print "$3\n";
         my %struct = ('name',$name,'comment',$3,'states',\%states);
         $structures->{$1} = \%struct;
 
@@ -156,7 +161,6 @@ sub defineModel{
                 $states{$state_num} = \%state;
                 my @transitions = split(/;/,$3); my $sum = 0;
                 foreach (@transitions){ #process the transitions for this state
-                    #print "$name, $state_num, $_\n";
                     if($_ =~ /^(0?\.?[0-9]*)->(-?[0-9]+)$/i){
                         push(@trans,{dest => $2,prob => $1});
                         $sum += $1;
@@ -192,11 +196,9 @@ sub defineModel{
                 if ($_->{'dest'} < $min){ #keep track of the lowest destination state
                     $min = $_->{'dest'}; $minstate = $statekey; $minname = $structures->{$sk}->{'name'};
                 } 
-                #print "struct: $sk, state: $statekey, dest: $_->{'dest'}\n";
             }
         }
         $gsc += $num;
-        #print "$gsc\n";
     }
 
     #make sure destination states really exist

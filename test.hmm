@@ -1,0 +1,63 @@
+#state character definiton//accepted inputs and the accompanying emission probabilies
+A|1->A
+T|1->T
+C|1->C
+G|1->G
+N|.25->A;.25->T;.25->C;.25->G
+#end scd
+
+#model structures
+>1|Pre-gene//expect 25 nt before the gene starts
+1|N|.96->1;.04->2
+#
+
+>2|Promoter//find some form of a TATA box
+1|T|1->2
+2|A|.2->3;.8->4
+3|A|1->4
+4|T|1->5
+5|A|.1->6;.8->7;.1->8
+6|A|.5->7;.5->8
+7|T|1->8
+#
+
+>3|Interim region//4 nt gap
+1|N|1->2
+2|N|1->3
+3|N|1->4
+4|N|1->5
+#
+
+>4|Ribosomal region//find a spot for the ribosome to stick to
+1|A|1->2
+2|A|.7->3;.3->5
+3|T|.4->4;.6->5
+4|T|1->5
+5|T|1->6
+6|G|1->7
+#
+
+>7|Start Codon//(ATG==Methionine)
+1|A|1->2
+2|T|1->3
+3|G|1->4
+#
+
+>6|Coding region//expect about 100 codons in the gene
+1|N|1->2
+2|N|1->3
+3|N|.99->1;.01->4
+#
+
+>5|Stop codon//(TAG==amber,TAA==ochre,TGA==opal or umber)
+1|T|.7->2;.3->3
+2|A|.5->4;.5->5
+3|G|1->4
+4|A|1->6
+5|G|1->6
+#
+
+>8|Post-gene//loop to the begining just to show we can
+1|N|1->-28
+#
+#end model
