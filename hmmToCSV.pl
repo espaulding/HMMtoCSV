@@ -73,7 +73,7 @@ sub buildModel{
 
     my @emission;   # [row][column] with row==state_from, column[c]==probability(emitchars[c])
     my @transition; # [row][column] with row==state_from, column[c]==probability(state_to)
-    my $row = 1;
+    my $row = 0;
 
     #build transition and emission matrix
     my @structkeys = getNumericSortKeys(%structures);
@@ -157,7 +157,7 @@ sub defineModel{
                 my @transitions = split(/;/,$3); my $sum = 0;
                 foreach (@transitions){ #process the transitions for this state
                     #print "$name, $state_num, $_\n";
-                    if($_ =~ /^(0?\.?[0-9]*)->(next|-?[0-9]+)$/i){
+                    if($_ =~ /^(0?\.?[0-9]*)->(-?[0-9]+)$/i){
                         push(@trans,{dest => $2,prob => $1});
                         $sum += $1;
                     } else{
@@ -185,18 +185,12 @@ sub defineModel{
         foreach my $statekey (@statekeys){
             my $trans = $structures->{$sk}->{'states'}->{$statekey}->{'trans'};
             foreach (@$trans){
-                my $dest = $_->{'dest'};
-                if((lc $dest) eq "next"){
-                    $dest = $gsc + $num + 1; #point to the first state of the next structure
-                } else {
-                    $dest += $gsc; #adjust for earlier structures in the model
-                }
-                $_->{'dest'} = $dest; 
-                if ($dest > $max){ #keep track of the highest destination state
-                    $max = $dest; $maxstate = $statekey; $maxname = $structures->{$sk}->{'name'};
+                $_->{'dest'} += $gsc; #adjust for earlier structures in the model
+                if ($_->{'dest'} > $max){ #keep track of the highest destination state
+                    $max = $_->{'dest'}; $maxstate = $statekey; $maxname = $structures->{$sk}->{'name'};
                 } 
-                if ($dest < $min){ #keep track of the lowest destination state
-                    $min = $dest; $minstate = $statekey; $minname = $structures->{$sk}->{'name'};
+                if ($_->{'dest'} < $min){ #keep track of the lowest destination state
+                    $min = $_->{'dest'}; $minstate = $statekey; $minname = $structures->{$sk}->{'name'};
                 } 
                 #print "struct: $sk, state: $statekey, dest: $_->{'dest'}\n";
             }
