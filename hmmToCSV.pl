@@ -100,7 +100,6 @@ sub buildModel{
 
     my @emission;   # [row][column] with row==state_from, column[c]==probability(emitchars[c])
     my @transition; # [row][column] with row==state_from, column[c]==probability(state_to)
-    my $row = 0;
 
     #build transition and emission matrix
     my @structkeys = getNumericSortKeys(%structures);
@@ -114,14 +113,13 @@ sub buildModel{
             push(@transition, \@trow); #push an array prefilled with zeroes for the transition row
             my $trans = $structures{$sk}->{'states'}->{$statekey}->{'trans'};
             foreach (@$trans){
-                $transition[$row]->[$_->{'dest'}-1] = $_->{'prob'};
+                $trow[$_->{'dest'}-1] = $_->{'prob'};
             }
             push(@emission, \@erow);   #push an array prefilled with zeroes for the emission row
             my $char = $structures{$sk}->{'states'}->{$statekey}->{'char'};
             foreach my $e (keys %{$statechars{$char}}){
-                $emission[$row]->[$emitchars{$e}] = $statechars{$char}{$e};
+                $erow[$emitchars{$e}] = $statechars{$char}{$e};
             }
-            $row += 1;
         }
     }
     
