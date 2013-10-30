@@ -41,9 +41,9 @@ my $transition_syntax = "^($probability)->($number)\\s*\$";                     
 
 #wrap all the main code in a function in order to keep the global namespace clean
 sub main{
-	my $trans = "TRANS.csv";
+    my $trans = "TRANS.csv";
     my $emit  = "EMIT.csv";
-	my $file = "sample.hmm"; #default script that we'll look for and process
+    my $file = "sample.hmm"; #default script that we'll look for and process
     my $scriptname = $0; #the name of this script
     my $total = $#ARGV + 1;
 
@@ -55,9 +55,9 @@ sub main{
 	my $model = buildModel({ data => readfile({filename => $file}) });
 	
 	#write the trans data to a csv file
-	writeCSV({filename   => $trans,
+    writeCSV({filename   => $trans,
               matrix     => $model->{'TRANS'},
-		      delimiter  => ","});
+              delimiter  => ","});
 
     #write the emit data to a csv file
     writeCSV({filename   => $emit,
