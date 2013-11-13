@@ -41,6 +41,7 @@ my $transition_syntax = "^($probability)->($number)\\s*\$";                     
 
 #wrap all the main code in a function in order to keep the global namespace clean
 sub main{
+	my $columnHeaders = false;
     my $trans = "TRANS.csv";
     my $emit  = "EMIT.csv";
     my $file = "sample.hmm"; #default script that we'll look for and process
@@ -52,7 +53,8 @@ sub main{
     }
 	
     #collect data for the transition matrix and emission matrix
-	my $model = buildModel({ data => readfile({filename => $file}) });
+	my $model = buildModel({ headers => $columnHeaders,
+		                     data    => readfile({filename => $file}) });
 	
 	#write the trans data to a csv file
     writeCSV({filename   => $trans,
@@ -100,6 +102,14 @@ sub buildModel{
 
     my @emission;   # [row][column] with row==state_from, column[c]==probability(emitchars[c])
     my @transition; # [row][column] with row==state_from, column[c]==probability(state_to)
+
+    #add headers if requested
+    if($args->{'headers'}){
+    	my @eheaders = (keys %emitchars);
+    	my @theaders = 1..$numstates;
+        push(@emission, \@eheaders);
+        push(@transition, \@theaders);
+    }
 
     #build transition and emission matrix
     my @structkeys = getNumericSortKeys(%structures);
