@@ -41,7 +41,7 @@ my $transition_syntax = "^($probability)->($number)\\s*\$";                     
 
 #wrap all the main code in a function in order to keep the global namespace clean
 sub main{
-	my $columnHeaders = false;
+    my $columnHeaders = false;
     my $trans = "TRANS.csv";
     my $emit  = "EMIT.csv";
     my $file = "sample.hmm"; #default script that we'll look for and process
@@ -51,12 +51,12 @@ sub main{
     if ($total == 1){ #assume the user gave us a .hmm file to process
         $file = $ARGV[0];
     }
-	
+    
     #collect data for the transition matrix and emission matrix
-	my $model = buildModel({ headers => $columnHeaders,
-		                     data    => readfile({filename => $file}) });
-	
-	#write the trans data to a csv file
+    my $model = buildModel({ headers => $columnHeaders,
+                             data    => readfile({filename => $file}) });
+    
+    #write the trans data to a csv file
     writeCSV({filename   => $trans,
               matrix     => $model->{'TRANS'},
               delimiter  => ","});
@@ -105,8 +105,8 @@ sub buildModel{
 
     #add headers if requested
     if($args->{'headers'}){
-    	my @eheaders = (keys %emitchars);
-    	my @theaders = 1..$numstates;
+        my @eheaders = (keys %emitchars);
+        my @theaders = 1..$numstates;
         push(@emission, \@eheaders);
         push(@transition, \@theaders);
     }
@@ -274,7 +274,7 @@ sub defineStateCharacters{
 #assume that 2d array (matrix) is in row major format
 #and write it to the specified file
 sub writeCSV{
-	my $args = shift;
+    my $args = shift;
     my $filename = $args->{'filename'};
     my @matrix = @{$args->{'matrix'}};
 
